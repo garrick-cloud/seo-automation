@@ -19,7 +19,6 @@
       </div>
       <div class="cover-footer">
         <span>Prepared by <strong>Skribble</strong></span>
-        <span>Data Hub: Google Search Console</span>
       </div>
     </div>
   </div>
@@ -31,7 +30,7 @@
         <p>Google Search Console · Performance Breakdown</p>
       </div>
       <div class="page-header-right">
-        <div class="source-badge">GSC Live</div>
+        <div class="source-badge">Live Data</div>
       </div>
     </div>
 
@@ -102,7 +101,7 @@
         <p>Google Search Console Performance Records</p>
       </div>
       <div class="page-header-right">
-        <div class="source-badge">GSC Analytics</div>
+        <div class="source-badge">Analytics Data</div>
       </div>
     </div>
 
@@ -131,7 +130,7 @@
         <p>Query distribution across SERP ranking zones</p>
         <div class="bar-chart" id="pos-bar-chart"></div>
         <div style="display: flex; gap: 8px; justify-content: space-around; font-size: 10px; color: var(--muted); font-weight: 600;">
-          <span>Pos 1–3</span><span>Pos 4–10</span><span>Pos 11–20</span><span>Pos 21+</span>
+          <span>Position 1–3</span><span>Position 4–10</span><span>Position 11–20</span><span>Position 21+</span>
         </div>
       </div>
       <div class="pos-chart-card">
@@ -322,7 +321,7 @@
         const percentage = Math.round((tier.count / globalTotalRanked) * 100);
         breakdownEl.innerHTML += `
             <div class="bd-row">
-            <span class="bd-range">Pos ${tier.range}</span>
+            <span class="bd-range">Position ${tier.range}</span>
             <div class="bd-bar-wrap"><div class="bd-bar-fill" style="width:${percentage}%;"></div></div>
             <span class="bd-count">${tier.count}</span>
             <span class="bd-pct">${percentage}%</span>
@@ -422,10 +421,10 @@
             dateMap[d].impressions += Number(r.impressions || 0);
         });
 
-        // Sort chronological values ascending and grab up to the last 6 tracking points
+        // --- UPDATED: Sort values and grab up to the last 30 tracking points (1 full month) ---
         const timelineData = Object.values(dateMap)
             .sort((a, b) => new Date(a.date) - new Date(b.date))
-            .slice(-6);
+            .slice(-30); 
 
         const length = timelineData.length;
         const maxClicks = Math.max(...timelineData.map(t => t.clicks), 1);
@@ -471,24 +470,28 @@
         let clickLinePathStr = timelineData.map((d, i) => `${i === 0 ? 'M' : 'L'}${calcX(i)},${calcYClicks(d.clicks)}`).join(' ');
         svgConstructHtml += `<path d="${clickLinePathStr}" fill="none" stroke="#e31d5c" stroke-width="2.5" />`;
 
-        // Plot the data point node rings and structural date axis labels
+        // Plot data point nodes and dynamic axis labels
         timelineData.forEach((d, i) => {
             const cx = calcX(i);
             const cyClick = calcYClicks(d.clicks);
             const cyImp = calcYImpressions(d.impressions);
 
-            svgConstructHtml += `<circle cx="${cx}" cy="${cyClick}" r="4" fill="#e31d5c" />`;
-            svgConstructHtml += `<circle cx="${cx}" cy="${cyImp}" r="3" fill="#94a3b8" />`;
+            // --- OPTIMIZATION: Only render node circles for all entries if space permits, or leave them clean ---
+            svgConstructHtml += `<circle cx="${cx}" cy="${cyClick}" r="2" fill="#e31d5c" />`;
+            svgConstructHtml += `<circle cx="${cx}" cy="${cyImp}" r="1.5" fill="#94a3b8" />`;
             
-            // Format date string to display neatly as "MM-DD"
-            let cleanDate = d.date;
-            if (d.date !== "N/A") {
-            const dateObj = new Date(d.date);
-            if (!isNaN(dateObj)) {
-                cleanDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+            // --- UPDATED: Interval spacing for text labels so they don't overlap on a 30-day chart ---
+            // Displays the first day, last day, and every 5th day in between
+            if (i === 0 || i === length - 1 || i % 5 === 0) {
+                let cleanDate = d.date;
+                if (d.date !== "N/A") {
+                    const dateObj = new Date(d.date);
+                    if (!isNaN(dateObj)) {
+                        cleanDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+                    }
+                }
+                svgConstructHtml += `<text x="${cx}" y="${height - 4}" font-size="10" fill="#475569" font-weight="600" text-anchor="middle" font-family="sans-serif">${cleanDate}</text>`;
             }
-            }
-            svgConstructHtml += `<text x="${cx}" y="${height - 4}" font-size="10" fill="#475569" font-weight="600" text-anchor="middle" font-family="sans-serif">${cleanDate}</text>`;
         });
 
         svgPlot.innerHTML = svgConstructHtml;
