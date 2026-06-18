@@ -121,7 +121,7 @@
               <th>Impressions</th>
               <th>CTR</th>
               <th>Avg Pos</th>
-              <th>Device/Device Filter</th>
+              <th>Search Intent</th>
             </tr>
           </thead>
           <tbody id="kw-tbody"></tbody>
@@ -245,7 +245,6 @@
       <div class="kw-chart-card">
         <div class="kw-chart-title">
           Monthly Search Volume
-          <span class="kw-badge">Bar width = searches / month</span>
         </div>
         <div class="bar-list-kw" id="vol-chart"></div>
       </div>
@@ -254,7 +253,6 @@
       <div class="kw-chart-card">
         <div class="kw-chart-title">
           SERP Position Ranking
-          <span class="kw-badge">Longer bar = higher position</span>
         </div>
         <div class="bar-list-kw" id="rank-chart"></div>
       </div>
@@ -274,7 +272,6 @@
       if (!res.ok) throw new Error(`HTTP Error Status: ${res.status}`);
       const raw = await res.json();
 
-      // Standardize payload ingestion format (handles array wrappers and plain objects)
       const payload = Array.isArray(raw) ? (raw[0].json || raw[0]) : (raw.json || raw);
       const records = Array.isArray(payload.records) ? payload.records : [];
       const numFmt = n => (n == null || isNaN(n)) ? '0' : Number(n).toLocaleString();
@@ -373,13 +370,18 @@
         kwTbody.innerHTML = '';
         topRecords.forEach(r => {
           const displayCtr = typeof r.ctr === 'number' ? (r.ctr < 1 ? (r.ctr * 100).toFixed(1) + '%' : r.ctr.toFixed(1) + '%') : (r.ctr || "0%");
+          
+          // INTENT TAG GENERATION SYSTEM
+          const isBranded = /sunsuria|sunsu/i.test(String(r.query || ''));
+          const intentLabel = isBranded ? 'Branded' : 'Discovery';
+
           kwTbody.innerHTML += `<tr>
             <td class="kw-name">${r.query || 'N/A'}</td>
             <td>${numFmt(r.clicks)}</td>
             <td>${numFmt(r.impressions)}</td>
             <td>${displayCtr}</td>
             <td>${r.position ? Number(r.position).toFixed(1) : '0.0'}</td>
-            <td><span class="type-badge">${r.device_category || 'Global'}</span></td>
+            <td><span class="type-badge">${intentLabel}</span></td>
           </tr>`;
         });
       }
@@ -524,7 +526,7 @@
             kw,
             i,
             pct,
-            `${numFmt(volume)}/mo`,
+            '', 
             numFmt(volume),
             `SERP #${kw.serp_position_ranking || 'N/A'}`
           );
@@ -538,9 +540,7 @@
         kws.forEach((kw, i) => {
           const rank = Number(kw.serp_position_ranking || 1);
 
-          // Rank #1 should be longest, lower rankings shorter
           const pct = (((maxRank - rank + 1) / maxRank) * 100).toFixed(1);
-
           const lbl = rank === 1 ? '#1 · Top Result' : `#${rank}`;
 
           rankChart.innerHTML += kwRow(
@@ -556,6 +556,7 @@
         volChart.innerHTML = '<p style="color:var(--muted);font-size:12px;padding:20px;">No keyword ranking data found.</p>';
         rankChart.innerHTML = '<p style="color:var(--muted);font-size:12px;padding:20px;">No SERP ranking data found.</p>';
       }
+      
       // 10. REVEAL MATRIX LAYOUT VISIBILITY AFTER SANITIZATION PASS
       document.getElementById('loading').style.display = 'none';
       document.getElementById('report').style.display = 'block';
